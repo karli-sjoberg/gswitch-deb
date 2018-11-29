@@ -1,0 +1,12 @@
+Source: gswitch
+Section: utils
+Priority: optional
+Maintainer: Karli Sjoberg <karli@inparadise.se>
+Build-Depends: debhelper (>= 10)
+Standards-Version: 4.1.2
+Homepage: https://github.com/karli-sjoberg/gswitch
+
+Package: gswitch
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: Friendly command line tool to change from internal to external GPU

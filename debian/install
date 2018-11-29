@@ -1,0 +1,2 @@
+gswitch usr/bin
+xorg.conf.egpu etc/X11
