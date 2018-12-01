@@ -1,4 +1,4 @@
-# gswitch-deb
+# gswitch-lp
 
 Hello!
 
