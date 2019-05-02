@@ -1,5 +1,5 @@
-gswitch (0.1.4) bionic; urgency=medium
+gswitch (0.2.0) bionic; urgency=medium
 
-  * Initial release 
+  * Added boot service
 
- -- Karli Sjoberg <karli@inparadise.se>  Tue, 27 Nov 2018 13:34:34 +0100
+ -- Karli Sjoberg <karli@inparadise.se>  Tue, 02 May 2019 22:10:34 +0100

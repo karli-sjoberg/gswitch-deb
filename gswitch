@@ -5,25 +5,7 @@ if [ "$(whoami)" != "root" ]; then
  exit
 fi
 
-ask_reload() {
-  QUESTION=$1
-  echo "${QUESTION}"
-  read ANSWER
-  case ${ANSWER} in
-    Y|y|Yes|yes)
-      RELOAD="true"
-    ;;
-    N|n|No|no)
-      RELOAD="false"
-    ;;
-    *)
-      echo "Unknown argument: ${ANSWER}."
-      exit 1
-    ;;
-  esac
-}
-
-if [ "${1}" = "egpu" ]; then
+switch_egpu() {
   if [ -h /etc/X11/xorg.conf ] && \
      [ -f /etc/X11/xorg.conf.egpu ] && \
      [ "$(readlink /etc/X11/xorg.conf)" = "/etc/X11/xorg.conf.egpu" ]; then
@@ -42,10 +24,12 @@ if [ "${1}" = "egpu" ]; then
       exit 0
     fi
   fi
-elif [ "${1}" = "internal" ]; then
+}
+
+switch_internal() {
   if [ -h /etc/X11/xorg.conf ] && \
      [ -f /etc/X11/xorg.conf.egpu ] && \
-     [ "$(readlink /etc/X11/xorg.conf)" = "/etc/X11/xorg.conf.egpu" ]; then 
+     [ "$(readlink /etc/X11/xorg.conf)" = "/etc/X11/xorg.conf.egpu" ]; then
     rm -f /etc/X11/xorg.conf
     ask_reload "You are now set up. Would you like to reload?"
     if [ ${RELOAD} = "true" ]; then
@@ -61,9 +45,63 @@ elif [ "${1}" = "internal" ]; then
       exit 0
     fi
   fi
-else
-  echo "Unknown argument: ${1}."
-  echo "Valid arguments are \"egpu\" or \"internal\"."
-  exit 1
-fi
+}
 
+ask_reload() {
+  QUESTION=$1
+  echo "${QUESTION}"
+  read ANSWER
+  case ${ANSWER} in
+    Y|y|Yes|yes)
+      RELOAD="true"
+    ;;
+    N|n|No|no)
+      RELOAD="false"
+    ;;
+    *)
+      echo "Unknown argument: ${ANSWER}."
+      exit 1
+    ;;
+  esac
+}
+
+case $1 in
+  egpu)
+    switch_egpu
+  ;;
+  internal)
+    switch_internal
+  ;;
+  boot)
+    EGPU_TEMPLATE="/etc/X11/xorg.conf.egpu"
+    EGPU_BUS_ID=$(awk '/BusID/{gsub(/(PCI:|\")/," ");print$2}' \
+                  < ${EGPU_TEMPLATE})
+    MODE="internal"
+    for HEX_DEVICE in $(lspci | grep -i 'vga' | cut -f 1 -d ' '); do
+      DEC_DEVICE=""
+      for HEX_VALUE in $(echo ${HEX_DEVICE} | tr ':|\.' ' '); do
+        HEX_VALUE_UPPER=$(echo ${HEX_VALUE} | tr '[a-z]' '[A-Z]')
+        DEC_VALUE=$(echo "ibase=16; ${HEX_VALUE_UPPER}" | bc)
+        DEC_DEVICE="${DEC_DEVICE}:${DEC_VALUE}"
+        DEC_DEVICE=$(echo ${DEC_DEVICE} | sed 's/^://')
+        if [ "${DEC_DEVICE}" = "${EGPU_BUS_ID}" ]; then
+          MODE="egpu"
+          break
+        fi
+      done
+    done
+    case ${MODE} in
+      egpu)
+        yes | switch_egpu
+      ;;
+      internal)
+        yes | switch_internal
+      ;;
+    esac
+  ;;
+  *)
+    echo "Unknown argument: ${1}."
+    echo "Valid arguments are \"egpu\", \"internal\" or \"boot\"."
+    exit 1
+  ;;
+esac

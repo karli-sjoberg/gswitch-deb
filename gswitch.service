@@ -1,0 +1,8 @@
+[Unit]
+Description=Automatic GPU switching service
+
+[Service]
+ExecStart=gswitch boot
+
+[Install]
+WantedBy=multi-user.target
