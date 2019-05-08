@@ -1,51 +1,13 @@
-#!/bin/sh
+#!/bin/sh -x
 
 if [ "$(whoami)" != "root" ]; then
  echo "You need to be root."
  exit
 fi
 
-switch_egpu() {
-  if [ -h /etc/X11/xorg.conf ] && \
-     [ -f /etc/X11/xorg.conf.egpu ] && \
-     [ "$(readlink /etc/X11/xorg.conf)" = "/etc/X11/xorg.conf.egpu" ]; then
-    ask_reload "You are already set up. Would you like to reload?"
-    if [ ${RELOAD} = "true" ]; then
-      systemctl restart display-manager.service
-    else
-      exit 0
-    fi
-  else
-    ln -s /etc/X11/xorg.conf.egpu /etc/X11/xorg.conf
-    ask_reload "You are now set up. Would you like to reload?"
-    if [ ${RELOAD} = "true" ]; then
-      systemctl restart display-manager.service
-    else
-      exit 0
-    fi
-  fi
-}
-
-switch_internal() {
-  if [ -h /etc/X11/xorg.conf ] && \
-     [ -f /etc/X11/xorg.conf.egpu ] && \
-     [ "$(readlink /etc/X11/xorg.conf)" = "/etc/X11/xorg.conf.egpu" ]; then
-    rm -f /etc/X11/xorg.conf
-    ask_reload "You are now set up. Would you like to reload?"
-    if [ ${RELOAD} = "true" ]; then
-      systemctl restart display-manager.service
-    else
-      exit 0
-    fi
-  else
-    ask_reload "You are already set up. Would you like to reload?"
-    if [ ${RELOAD} = "true" ]; then
-      systemctl restart display-manager.service
-    else
-      exit 0
-    fi
-  fi
-}
+EGPU_TEMPLATE="/etc/X11/xorg.conf.egpu"
+EGPU_BUS_ID=$(awk '/BusID/{gsub(/(PCI:|\")/," ");print$2}' < ${EGPU_TEMPLATE})
+XORG_DRIVER=$(awk '/Driver/{gsub("\"","");print$2}' < ${EGPU_TEMPLATE})
 
 ask_reload() {
   QUESTION=$1
@@ -65,6 +27,65 @@ ask_reload() {
   esac
 }
 
+do_reload() {
+  ( trap '' HUP TERM
+    while [ "$(systemctl status display-manager | awk '/Active:/{print$2}')" \
+      = "active" ]; do
+      sleep 1
+    done
+    if [ ${XORG_DRIVER} = "nvidia" ]; then
+      for DRIVER in nvidia_uvm nvidia_drm nvidia_modeset nvidia; do
+        modprobe -r ${DRIVER}
+      done
+      modprobe nvidia
+    fi
+    systemctl start display-manager.service ) &
+  systemctl stop display-manager.service
+  exit 0
+}
+
+switch_egpu() {
+  if [ -h /etc/X11/xorg.conf ] && \
+     [ -f /etc/X11/xorg.conf.egpu ] && \
+     [ "$(readlink /etc/X11/xorg.conf)" = "/etc/X11/xorg.conf.egpu" ]; then
+    ask_reload "You are already set up. Would you like to reload? (Y/n)"
+    if [ ${RELOAD} = "true" ]; then
+      do_reload
+    else
+      exit 0
+    fi
+  else
+    ln -s /etc/X11/xorg.conf.egpu /etc/X11/xorg.conf
+    ask_reload "You are now set up. Would you like to reload? (Y/n)"
+    if [ ${RELOAD} = "true" ]; then
+      do_reload
+    else
+      exit 0
+    fi
+  fi
+}
+
+switch_internal() {
+  if [ -h /etc/X11/xorg.conf ] && \
+     [ -f /etc/X11/xorg.conf.egpu ] && \
+     [ "$(readlink /etc/X11/xorg.conf)" = "/etc/X11/xorg.conf.egpu" ]; then
+    rm -f /etc/X11/xorg.conf
+    ask_reload "You are now set up. Would you like to reload? (Y/n)"
+    if [ ${RELOAD} = "true" ]; then
+      do_reload
+    else
+      exit 0
+    fi
+  else
+    ask_reload "You are already set up. Would you like to reload? (Y/n)"
+    if [ ${RELOAD} = "true" ]; then
+      do_reload
+    else
+      exit 0
+    fi
+  fi
+}
+
 case $1 in
   egpu)
     switch_egpu
@@ -73,9 +94,6 @@ case $1 in
     switch_internal
   ;;
   boot)
-    EGPU_TEMPLATE="/etc/X11/xorg.conf.egpu"
-    EGPU_BUS_ID=$(awk '/BusID/{gsub(/(PCI:|\")/," ");print$2}' \
-                  < ${EGPU_TEMPLATE})
     MODE="internal"
     for HEX_DEVICE in $(lspci | grep -i 'vga' | cut -f 1 -d ' '); do
       DEC_DEVICE=""
