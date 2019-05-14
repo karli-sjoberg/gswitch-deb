@@ -11,6 +11,8 @@ cd ..</br>
 sudo dpkg -i \*.deb</br>
 rm -rf gswitch\*</br>
 
+sudo gswitch setup
+
 This package also comes with automatic detection of eGPU at boot!
 
 After gswitch has been configured and you've got the switching set up, simply
