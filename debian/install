@@ -1,3 +1,3 @@
 gswitch usr/bin
-xorg.conf.egpu etc/X11
+xorg.conf.egpu usr/share/gswitch
 gswitch.service etc/systemd/system
