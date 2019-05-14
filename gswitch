@@ -87,6 +87,11 @@ switch_internal() {
 }
 
 case $1 in
+  -h|help)
+    echo "Valid arguments are \"egpu\", \"internal\", \"boot\" or \"setup\"."
+    echo "Example: sudo gswitch egpu"
+    exit 0
+  ;;
   egpu)
     switch_egpu
   ;;
@@ -150,7 +155,8 @@ case $1 in
   ;;
   *)
     echo "Unknown argument: ${1}."
-    echo "Valid arguments are \"egpu\", \"internal\" or \"boot\"."
+    echo "Valid arguments are \"egpu\", \"internal\", \"boot\" or \"setup\"."
+    echo "Example: sudo gswitch egpu"
     exit 1
   ;;
 esac
