@@ -1,5 +1,5 @@
-gswitch (0.2.0) bionic; urgency=medium
+gswitch (0.3.0) bionic; urgency=medium
 
-  * Added boot service
+  * A little code tweaking to the boot routine, plus a new setup routine that prepares gswitch for use.
 
- -- Karli Sjoberg <karli@inparadise.se>  Tue, 02 May 2019 22:10:34 +0100
+ -- Karli Sjoberg <karli@inparadise.se>  Tue, 14 May 2019 13:09:00 +0100
