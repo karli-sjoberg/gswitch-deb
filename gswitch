@@ -1,4 +1,4 @@
-#!/bin/sh -x
+#!/bin/sh
 
 if [ "$(whoami)" != "root" ]; then
  echo "You need to be root."
@@ -95,18 +95,18 @@ case $1 in
   ;;
   boot)
     MODE="internal"
-    for HEX_DEVICE in $(lspci | grep -i 'vga' | cut -f 1 -d ' '); do
-      DEC_DEVICE=""
-      for HEX_VALUE in $(echo ${HEX_DEVICE} | tr ':|\.' ' '); do
+    for HEX_ID in $(lspci | grep -i 'vga' | cut -f 1 -d ' '); do
+      DEC_ID=""
+      for HEX_VALUE in $(echo ${HEX_ID} | tr ':|\.' ' '); do
         HEX_VALUE_UPPER=$(echo ${HEX_VALUE} | tr '[a-z]' '[A-Z]')
         DEC_VALUE=$(echo "ibase=16; ${HEX_VALUE_UPPER}" | bc)
-        DEC_DEVICE="${DEC_DEVICE}:${DEC_VALUE}"
-        DEC_DEVICE=$(echo ${DEC_DEVICE} | sed 's/^://')
-        if [ "${DEC_DEVICE}" = "${EGPU_BUS_ID}" ]; then
-          MODE="egpu"
-          break
-        fi
+        DEC_ID="${DEC_ID}:${DEC_VALUE}"
       done
+      DEC_ID=$(echo ${DEC_ID} | sed 's/^://')
+      if [ "${DEC_ID}" = "${EGPU_BUS_ID}" ]; then
+        MODE="egpu"
+	break
+      fi
     done
     case ${MODE} in
       egpu)
@@ -116,6 +116,37 @@ case $1 in
         yes | switch_internal
       ;;
     esac
+  ;;
+  setup)
+    lspci | awk '/vga|VGA/{print "BusID: "$0}'
+    echo "Which of these cards is your eGPU?"
+    echo "Please type in the BusID, e.g: 00:02.0"
+    read HEX_ID
+    VALID_HEX_ID=$(echo ${HEX_ID} | egrep -c '^[a-z0-9]+:[a-z0-9]+\.[a-z0-9]$')
+    if [ ${VALID_HEX_ID} -ne 1 ]; then
+      echo "You have typed in an unvalid BusID."
+      echo "Example of valid entry: 00:02.0"
+      exit 1
+    fi
+    for HEX_VALUE in $(echo ${HEX_ID} | tr ':|\.' ' '); do
+        HEX_VALUE_UPPER=$(echo ${HEX_VALUE} | tr '[a-z]' '[A-Z]')
+        DEC_VALUE=$(echo "ibase=16; ${HEX_VALUE_UPPER}" | bc)
+        DEC_ID="${DEC_ID}:${DEC_VALUE}"
+    done
+    DEC_ID=$(echo ${DEC_ID} | sed 's/^:/PCI:/')
+    sed -E -i "s/BusID.*$/BusID      \"${DEC_ID}\"/" /etc/X11/xorg.conf.egpu
+    GPU_ID=$(lspci | grep -i "${HEX_ID}")
+    if echo "${GPU_ID}" | grep -qi 'nvidia'; then
+      DRIVER="nvidia"
+    elif echo "${GPU_ID}" | grep -qi 'amd'; then
+      DRIVER="amdgpu"
+    else
+      echo "Couldn't automatically find the proper driver for the GPU. Exiting."
+      exit 1
+    fi
+    sed -E -i "s/Driver.*$/Driver     \"${DRIVER}\"/" /etc/X11/xorg.conf.egpu
+    echo "Setup complete!"
+    exit 0
   ;;
   *)
     echo "Unknown argument: ${1}."
