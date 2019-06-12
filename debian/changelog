@@ -1,9 +1,5 @@
-gswitch (0.4.1) bionic; urgency=medium
+gswitch (0.4.4) bionic; urgency=medium
 
-  * A little code tweaking to the boot routine, plus a new setup routine that
-    prepares gswitch for use.
-
-  * Changed the xorg template location to keep it from being clobbered on
-    updates.
+  * Made the 'boot' argument only reload when needed.
 
  -- Karli Sjoberg <karli@inparadise.se>  Tue, 14 May 2019 18:13:00 +0100
